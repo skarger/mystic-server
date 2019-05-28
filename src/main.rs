@@ -1,8 +1,11 @@
 use actix_web::{web, App, Responder, HttpResponse, HttpServer};
+use actix_web::http::header;
+use actix_web::middleware::cors;
 use std::{env};
 use juniper::{FieldResult, Variables, http::GraphQLRequest};
 use juniper::http::graphiql::graphiql_source;
 use serde_json;
+use std::collections::HashMap;
 
 #[derive(juniper::GraphQLObject)]
 #[graphql(description="An organizing label applied to an objective, represented as a string")]
@@ -58,7 +61,9 @@ fn graphql(
         &(),
     ).unwrap();
 
-    serde_json::to_string(&res)
+    let mut data = HashMap::new();
+    data.insert(String::from("data"), &res);
+    serde_json::to_string(&data)
 }
 
 
@@ -81,6 +86,14 @@ fn main() -> std::io::Result<()> {
         .expect("PORT must be a number");
 
     HttpServer::new(|| App::new()
+        .wrap(
+            cors::Cors::new()
+                .allowed_origin("http://localhost:4200")
+                .allowed_methods(vec!["GET", "POST"])
+                .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
+                .allowed_header(header::CONTENT_TYPE)
+                .max_age(3600)
+        )
         .service(web::resource("/").to(index))
         .service(web::resource("/graphql").route(web::post().to(graphql)))
         .service(web::resource("/graphiql").route(web::get().to(graphiql))))
