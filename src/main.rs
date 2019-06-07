@@ -6,21 +6,26 @@ use handlebars::Handlebars;
 use env_logger;
 use listenfd::ListenFd;
 use serde_json::json;
-use std::collections::{BTreeMap};
 use std::env;
-use std::fs;
+use std::error::Error;
 
+struct AppState {
+    pub template_registry: Handlebars,
+}
 
-fn index() -> impl Responder {
-    let mut handlebars = Handlebars::new();
+// Registers the Handlebars templates for the application.
+fn register_templates() -> Result<Handlebars, Box<dyn Error>> {
+    let mut template_registry = Handlebars::new();
+    template_registry.set_strict_mode(true);
+    template_registry.register_templates_directory(".hbs", "./web/templates/")?;
 
-    // register the template. The template string will be verified and compiled.
-    let source = "hello {{world}}";
-    assert!(handlebars.register_template_string("index", source).is_ok());
+    Ok(template_registry)
+}
 
-    let mut data = BTreeMap::new();
-    data.insert("world".to_string(), "世界!".to_string());
-    handlebars.render("index", &data).unwrap()
+fn index(data: web::Data<AppState>) -> impl Responder {
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .body(data.template_registry.render("home", &json!({})).unwrap())
 }
 
 fn api_search() -> impl Responder {
@@ -33,8 +38,8 @@ fn api_search() -> impl Responder {
     result.to_string()
 }
 
-fn search() -> HttpResponse {
-    let data = json!({
+fn search(data: web::Data<AppState>) -> HttpResponse {
+    let json = json!({
         "data": {
             "clientName": "Student",
             "objectives": [
@@ -46,19 +51,12 @@ fn search() -> HttpResponse {
     let env = json!({
       "scriptURL": "https://objective-bank.s3.amazonaws.com/app-bbf7cb9a309d9faa940a1cfbfb7de87e.js",
       "cssURL": "https://objective-bank.s3.amazonaws.com/app-6314a9ef95b155b4de563d349944e6f3.css",
-      "data": data.to_string()
+      "data": json.to_string()
     });
-
-    let mut handlebars = Handlebars::new();
-    let filename = "./templates/objectives.hbs";
-    let source = fs::read_to_string(filename)
-        .expect("Something went wrong reading the file");
-
-    assert!(handlebars.register_template_string("objectives", source).is_ok());
 
     HttpResponse::Ok()
         .content_type("text/html")
-        .body(handlebars.render("objectives", &env).unwrap())
+        .body(data.template_registry.render("objectives", &env).unwrap())
 }
 
 fn main() -> std::io::Result<()> {
@@ -74,6 +72,7 @@ fn main() -> std::io::Result<()> {
         .expect("PORT must be a number");
 
     let mut server = HttpServer::new(|| App::new()
+        .data(AppState { template_registry: register_templates().unwrap() })
         .wrap(Logger::default())
         .wrap(Logger::new("%a %{User-Agent}i"))
         .wrap(
