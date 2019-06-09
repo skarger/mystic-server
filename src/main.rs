@@ -63,6 +63,8 @@ fn search(data: web::Data<AppState>) -> HttpResponse {
     });
 
     let context = json!({
+      "appEnvironment": format!("{}", env::var("APP_ENVIRONMENT").unwrap()),
+      "baseURL": format!("{}", env::var("BASE_URL").unwrap()),
       "scriptURL": format!("https://objective-bank.s3.amazonaws.com/app-{}.js", env::var("CLIENT_JS_ID").unwrap()),
       "cssURL": format!("https://objective-bank.s3.amazonaws.com/app-{}.css", env::var("CLIENT_CSS_ID").unwrap()),
       "data": json.to_string()
