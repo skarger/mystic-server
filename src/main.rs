@@ -41,10 +41,24 @@ fn api_search() -> impl Responder {
 fn search(data: web::Data<AppState>) -> HttpResponse {
     let json = json!({
         "data": {
-            "clientName": "Student",
-            "objectives": [
-                { "description": "An objective" }
-            ]
+          "clientName": "Client",
+          "goalAreas": [
+            { "name": "Receptive Language" },
+            { "name": "Reading Comprehension" },
+            { "name": "Expressive Language" },
+            { "name": "Expressive Morphology and Syntax" },
+            { "name": "Integrative Language" },
+            { "name": "Social Language Use" },
+            { "name": "Language Flexibility" },
+            { "name": "Speech Production" },
+            { "name": "Conversation Skills" }
+          ],
+          "tags": [
+            { "name": "vocabulary" },
+            { "name": "semantic" },
+            { "name": "social inferencing" },
+            { "name": "perspective taking" }
+          ]
         }
     });
 
