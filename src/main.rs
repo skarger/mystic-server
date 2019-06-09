@@ -48,15 +48,15 @@ fn search(data: web::Data<AppState>) -> HttpResponse {
         }
     });
 
-    let env = json!({
-      "scriptURL": "https://objective-bank.s3.amazonaws.com/app-bbf7cb9a309d9faa940a1cfbfb7de87e.js",
-      "cssURL": "https://objective-bank.s3.amazonaws.com/app-6314a9ef95b155b4de563d349944e6f3.css",
+    let context = json!({
+      "scriptURL": format!("https://objective-bank.s3.amazonaws.com/app-{}.js", env::var("CLIENT_JS_ID").unwrap()),
+      "cssURL": format!("https://objective-bank.s3.amazonaws.com/app-{}.css", env::var("CLIENT_CSS_ID").unwrap()),
       "data": json.to_string()
     });
 
     HttpResponse::Ok()
         .content_type("text/html")
-        .body(data.template_registry.render("objectives", &env).unwrap())
+        .body(data.template_registry.render("objectives", &context).unwrap())
 }
 
 fn main() -> std::io::Result<()> {
