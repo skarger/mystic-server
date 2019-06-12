@@ -1,13 +1,24 @@
+#[macro_use]
+extern crate diesel;
+
 use actix_web::{web, App, Responder, HttpServer, HttpResponse};
 use actix_web::http::header;
 use actix_web::middleware::cors;
 use actix_web::middleware::Logger;
+use diesel::pg::PgConnection;
+use diesel::prelude::*;
+use dotenv::dotenv;
 use handlebars::Handlebars;
 use env_logger;
 use listenfd::ListenFd;
+use self::models::*;
 use serde_json::json;
+use std::collections::BTreeMap;
 use std::env;
 use std::error::Error;
+
+pub mod schema;
+pub mod models;
 
 struct AppState {
     pub template_registry: Handlebars,
@@ -20,6 +31,15 @@ fn register_templates() -> Result<Handlebars, Box<dyn Error>> {
     template_registry.register_templates_directory(".hbs", "./web/templates/")?;
 
     Ok(template_registry)
+}
+
+pub fn establish_connection() -> PgConnection {
+    dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+    PgConnection::establish(&database_url)
+        .expect(&format!("Error connecting to {}", database_url))
 }
 
 fn index(data: web::Data<AppState>) -> impl Responder {
@@ -39,20 +59,24 @@ fn api_search() -> impl Responder {
 }
 
 fn search(data: web::Data<AppState>) -> HttpResponse {
+    use schema::goal_areas;
+
+    let connection = establish_connection();
+    let results = goal_areas::table
+        .load::<GoalArea>(&connection)
+        .expect("Error loading goal_areas");
+
+    let mut goal_areas = Vec::new();
+    for goal_area in results {
+        let mut item= BTreeMap::new();
+        item.insert(String::from("description"), goal_area.description);
+        goal_areas.push(item);
+    }
+
     let json = json!({
         "data": {
           "clientName": "Client",
-          "goalAreas": [
-            { "name": "Receptive Language" },
-            { "name": "Reading Comprehension" },
-            { "name": "Expressive Language" },
-            { "name": "Expressive Morphology and Syntax" },
-            { "name": "Integrative Language" },
-            { "name": "Social Language Use" },
-            { "name": "Language Flexibility" },
-            { "name": "Speech Production" },
-            { "name": "Conversation Skills" }
-          ],
+          "goalAreas": &goal_areas,
           "tags": [
             { "name": "vocabulary" },
             { "name": "semantic" },
