@@ -4,3 +4,15 @@ table! {
         description -> Text,
     }
 }
+
+table! {
+    tags (id) {
+        id -> Int4,
+        name -> Text,
+    }
+}
+
+allow_tables_to_appear_in_same_query!(
+    goal_areas,
+    tags,
+);
