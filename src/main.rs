@@ -95,30 +95,35 @@ fn api_search() -> impl Responder {
 }
 
 fn search(data: web::Data<AppState>) -> HttpResponse {
-    use schema::goal_areas;
+    use schema::{goal_areas, tags};
 
     let connection = establish_connection();
-    let results = goal_areas::table
+    let goal_area_results = goal_areas::table
         .load::<GoalArea>(&connection)
         .expect("Error loading goal_areas");
+    let tag_results = tags::table
+        .load::<Tag>(&connection)
+        .expect("Error loading tags");
 
     let mut goal_areas = Vec::new();
-    for goal_area in results {
+    for goal_area in goal_area_results {
         let mut item= BTreeMap::new();
         item.insert(String::from("description"), goal_area.description);
         goal_areas.push(item);
+    }
+
+    let mut tags = Vec::new();
+    for tag in tag_results {
+        let mut item= BTreeMap::new();
+        item.insert(String::from("name"), tag.name);
+        tags.push(item);
     }
 
     let json = json!({
         "data": {
           "clientName": "Client",
           "goalAreas": &goal_areas,
-          "tags": [
-            { "name": "vocabulary" },
-            { "name": "semantic" },
-            { "name": "social inferencing" },
-            { "name": "perspective taking" }
-          ]
+          "tags": &tags
         }
     });
 
