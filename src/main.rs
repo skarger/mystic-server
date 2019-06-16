@@ -17,8 +17,8 @@ use std::collections::BTreeMap;
 use std::env;
 use std::error::Error;
 
-pub mod schema;
-pub mod models;
+mod schema;
+mod models;
 
 struct AppState {
     pub template_registry: Handlebars,
