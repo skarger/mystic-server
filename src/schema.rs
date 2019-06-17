@@ -6,6 +6,15 @@ table! {
 }
 
 table! {
+    objectives (id) {
+        id -> Int4,
+        description -> Text,
+        ts_config_name -> Text,
+        ts_description -> Text,
+    }
+}
+
+table! {
     tags (id) {
         id -> Int4,
         name -> Text,
@@ -14,5 +23,6 @@ table! {
 
 allow_tables_to_appear_in_same_query!(
     goal_areas,
+    objectives,
     tags,
 );
