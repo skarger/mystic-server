@@ -31,6 +31,11 @@ struct NewGoalAreaPayload {
     description: String,
 }
 
+#[derive(Deserialize)]
+struct SearchQuery {
+    q: String,
+}
+
 struct AppState {
     pub template_registry: Handlebars,
 }
@@ -84,10 +89,10 @@ fn api_create_goal_area(payload: web::Json<DataPayload>) -> impl Responder {
     result.to_string()
 }
 
-fn api_search() -> impl Responder {
+fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
     let result = json!({
       "data": [
-        { "description": "An objective" }
+        { "description": format!("An objective {}", query.q) }
       ]
     });
 
