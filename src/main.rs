@@ -7,10 +7,12 @@ use actix_web::middleware::cors;
 use actix_web::middleware::Logger;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
+use diesel::sql_query;
 use dotenv::dotenv;
 use handlebars::Handlebars;
 use env_logger;
 use listenfd::ListenFd;
+use self::full_text_search::*;
 use self::models::*;
 use serde::{Deserialize};
 use serde_json::json;
@@ -18,6 +20,7 @@ use std::collections::BTreeMap;
 use std::env;
 use std::error::Error;
 
+mod full_text_search;
 mod schema;
 mod models;
 
@@ -90,10 +93,25 @@ fn api_create_goal_area(payload: web::Json<DataPayload>) -> impl Responder {
 }
 
 fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
+    use schema::objectives;
+
+    let connection = establish_connection();
+    //sql_query(format!("SELECT id, format(description, '${{clientName}}') AS description FROM objectives WHERE ts_description @@ to_tsquery('{}:*')", query.q))
+    let objective_results = objectives::table
+        .load::<Objective>(&connection)
+        .expect("Error loading objectives");
+
+    let mut objectives = Vec::new();
+    for objective in objective_results {
+        let mut item= BTreeMap::new();
+        item.insert(String::from("description"), objective.description);
+        objectives.push(item);
+    }
+
     let result = json!({
-      "data": [
-        { "description": format!("An objective {}", query.q) }
-      ]
+      "data": {
+        "objectives": &objectives
+      }
     });
 
     result.to_string()
