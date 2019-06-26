@@ -12,15 +12,13 @@ use dotenv::dotenv;
 use handlebars::Handlebars;
 use env_logger;
 use listenfd::ListenFd;
-use self::full_text_search::*;
 use self::models::*;
-use serde::{Deserialize};
+use serde::{Serialize, Deserialize};
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::env;
 use std::error::Error;
 
-mod full_text_search;
 mod schema;
 mod models;
 
@@ -31,6 +29,12 @@ struct DataPayload {
 
 #[derive(Deserialize)]
 struct NewGoalAreaPayload {
+    description: String,
+}
+
+#[derive(Serialize)]
+struct ObjectiveResult {
+    id: i32,
     description: String,
 }
 
@@ -93,19 +97,16 @@ fn api_create_goal_area(payload: web::Json<DataPayload>) -> impl Responder {
 }
 
 fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
-    use schema::objectives;
-
     let connection = establish_connection();
-    //sql_query(format!("SELECT id, format(description, '${{clientName}}') AS description FROM objectives WHERE ts_description @@ to_tsquery('{}:*')", query.q))
-    let objective_results = objectives::table
+
+
+    let objective_results = sql_query(text_search_sql(&query.q))
         .load::<Objective>(&connection)
         .expect("Error loading objectives");
 
     let mut objectives = Vec::new();
     for objective in objective_results {
-        let mut item= BTreeMap::new();
-        item.insert(String::from("description"), objective.description);
-        objectives.push(item);
+        objectives.push(ObjectiveResult { id: objective.id, description: objective.description });
     }
 
     let result = json!({
@@ -115,6 +116,18 @@ fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
     });
 
     result.to_string()
+}
+
+fn text_search_sql(search_phrase: &String) -> String {
+    let mut search_terms = Vec::new();
+
+    // TODO: implement first class query builder support for postgres full text search
+    // for now we do primitive string escaping
+    for term in str::split_whitespace(&str::replace(search_phrase, "'", "''")) {
+        search_terms.push(format!("{}:*", term));
+    }
+    format!("SELECT id, format(description, '${{clientName}}') AS description \
+        FROM objectives WHERE ts_description @@ to_tsquery('{}')", search_terms.join(" | "))
 }
 
 fn search(data: web::Data<AppState>) -> HttpResponse {

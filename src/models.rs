@@ -1,5 +1,5 @@
 use super::schema::goal_areas;
-use super::full_text_search::types::*;
+use super::schema::objectives;
 
 #[derive(Queryable)]
 pub struct GoalArea {
@@ -13,11 +13,11 @@ pub struct Tag {
     pub name: String,
 }
 
-#[derive(Queryable)]
+#[derive(QueryableByName, PartialEq, Debug)]
+#[table_name = "objectives"]
 pub struct Objective {
     pub id: i32,
     pub description: String,
-    pub ts_config_name: RegConfig,
 }
 
 #[derive(Insertable)]

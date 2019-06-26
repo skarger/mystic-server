@@ -1,8 +1,4 @@
-use super::types;
-
 table! {
-    use diesel::sql_types::*;
-
     goal_areas (id) {
         id -> Int4,
         description -> Text,
@@ -10,19 +6,13 @@ table! {
 }
 
 table! {
-    use diesel::sql_types::*;
-    use super::types;
-
     objectives (id) {
         id -> Int4,
         description -> Text,
-        ts_config_name -> types::RegConfig,
     }
 }
 
 table! {
-    use diesel::sql_types::*;
-
     tags (id) {
         id -> Int4,
         name -> Text,
