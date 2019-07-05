@@ -1,0 +1,1 @@
+DROP TABLE objectives_tags;
