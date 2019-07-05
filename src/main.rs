@@ -99,7 +99,6 @@ fn api_create_goal_area(payload: web::Json<DataPayload>) -> impl Responder {
 fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
     let connection = establish_connection();
 
-
     let objective_results = sql_query(text_search_sql(&query.q))
         .load::<Objective>(&connection)
         .expect("Error loading objectives");
@@ -126,7 +125,7 @@ fn text_search_sql(search_phrase: &String) -> String {
     for term in str::split_whitespace(&str::replace(search_phrase, "'", "''")) {
         search_terms.push(format!("{}:*", term));
     }
-    format!("SELECT id, format(description, '${{clientName}}') AS description \
+    format!("SELECT id, description \
         FROM objectives WHERE ts_description @@ to_tsquery('{}')", search_terms.join(" | "))
 }
 
