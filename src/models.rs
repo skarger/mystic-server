@@ -1,5 +1,7 @@
 use super::schema::goal_areas;
 use super::schema::objectives;
+use diesel::sql_types::*;
+
 
 #[derive(Queryable)]
 pub struct GoalArea {
@@ -18,6 +20,17 @@ pub struct Tag {
 pub struct Objective {
     pub id: i32,
     pub description: String,
+}
+
+#[derive(QueryableByName, PartialEq, Debug)]
+pub struct TaggedObjective {
+    #[sql_type="Integer"]
+    pub id: i32,
+    #[sql_type="Text"]
+    pub description: String,
+    #[sql_type="Array<Integer>"]
+    pub tag_ids: Vec<i32>,
+
 }
 
 #[derive(Insertable)]

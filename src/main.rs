@@ -36,6 +36,7 @@ struct NewGoalAreaPayload {
 struct ObjectiveResult {
     id: i32,
     description: String,
+    tag_ids: Vec<i32>
 }
 
 #[derive(Deserialize)]
@@ -100,12 +101,12 @@ fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
     let connection = establish_connection();
 
     let objective_results = sql_query(text_search_sql(&query.q))
-        .load::<Objective>(&connection)
+        .load::<TaggedObjective>(&connection)
         .expect("Error loading objectives");
 
     let mut objectives = Vec::new();
     for objective in objective_results {
-        objectives.push(ObjectiveResult { id: objective.id, description: objective.description });
+        objectives.push(ObjectiveResult { id: objective.id, description: objective.description, tag_ids: objective.tag_ids });
     }
 
     let result = json!({
@@ -125,8 +126,22 @@ fn text_search_sql(search_phrase: &String) -> String {
     for term in str::split_whitespace(&str::replace(search_phrase, "'", "''")) {
         search_terms.push(format!("{}:*", term));
     }
-    format!("SELECT id, description \
-        FROM objectives WHERE ts_description @@ to_tsquery('{}')", search_terms.join(" | "))
+
+    format!("SELECT objectives.id, objectives.description, CASE
+                    WHEN matching_tags.tag_ids is NULL THEN '{{}}'
+                    ELSE matching_tags.tag_ids
+                    END AS tag_ids
+            FROM objectives
+            LEFT OUTER JOIN (
+                SELECT ot.objective_id, array_agg(t.id) AS tag_ids
+                FROM objectives_tags ot
+                JOIN tags t ON t.id = ot.tag_id
+                WHERE t.ts_name @@ to_tsquery('{}')
+                GROUP BY ot.objective_id
+            ) matching_tags
+            ON (objectives.ts_description @@ to_tsquery('{}') OR matching_tags.objective_id = objectives.id)",
+            search_terms.join(" | "),
+            search_terms.join(" | "))
 }
 
 fn search(data: web::Data<AppState>) -> HttpResponse {
