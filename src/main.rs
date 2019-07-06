@@ -18,6 +18,7 @@ use serde_json::json;
 use std::collections::BTreeMap;
 use std::env;
 use std::error::Error;
+use std::str::FromStr;
 
 mod schema;
 mod models;
@@ -43,6 +44,7 @@ struct ObjectiveResult {
 #[derive(Deserialize)]
 struct SearchQuery {
     q: String,
+    goal_area_ids: Option<String>,
 }
 
 struct AppState {
@@ -101,7 +103,16 @@ fn api_create_goal_area(payload: web::Json<DataPayload>) -> impl Responder {
 fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
     let connection = establish_connection();
 
-    let objective_results = sql_query(text_search_sql(&query.q))
+    // if the request passed a goal_area_ids parameter, we coerce it into integers to ensure
+    // that it consists only of values with the same data type as the goal_areas IDs in the DB
+    let default_goal_area_ids: Vec<i32> = Vec::new();
+    let requested_goal_area_ids = match &query.goal_area_ids {
+        Some(v) => v.split(",").map(|id| i32::from_str(id)).filter_map(Result::ok).collect(),
+        None => default_goal_area_ids,
+    };
+
+    println!("{}", text_search_sql(&query.q, &requested_goal_area_ids));
+    let objective_results = sql_query(text_search_sql(&query.q, &requested_goal_area_ids))
         .load::<CategorizedObjective>(&connection)
         .expect("Error loading objectives");
 
@@ -124,7 +135,7 @@ fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
     result.to_string()
 }
 
-fn text_search_sql(search_phrase: &String) -> String {
+fn text_search_sql(search_phrase: &String, goal_area_ids: &Vec<i32>) -> String {
     let mut search_terms = Vec::new();
 
     // TODO: implement first class query builder support for postgres full text search
@@ -133,14 +144,23 @@ fn text_search_sql(search_phrase: &String) -> String {
         search_terms.push(format!("{}:*", term));
     }
 
+    let goal_area_ids_clause = if goal_area_ids.len() > 0 {
+        format!("AND goal_area_ids && ARRAY[{}]", goal_area_ids.iter()
+            .map(|i| i.to_string())
+            .collect::<Vec<String>>()
+            .join(","))
+    } else {
+        String::from("")
+    };
+
     format!("SELECT objectives.id, objectives.description,
                 CASE
                     WHEN containing_goal_areas.goal_area_ids is NULL THEN '{{}}'
                     ELSE containing_goal_areas.goal_area_ids
                 END AS goal_area_ids,
                 CASE
-                    WHEN matching_tags.tag_ids is NULL THEN '{{}}'
-                    ELSE matching_tags.tag_ids
+                    WHEN containing_tags.tag_ids is NULL THEN '{{}}'
+                    ELSE containing_tags.tag_ids
                 END AS tag_ids
             FROM objectives
             LEFT OUTER JOIN (
@@ -150,15 +170,25 @@ fn text_search_sql(search_phrase: &String) -> String {
             ) containing_goal_areas
             ON objectives.id = containing_goal_areas.objective_id
             LEFT OUTER JOIN (
-                SELECT ot.objective_id, array_agg(t.id) AS tag_ids
+                SELECT ot.objective_id, array_agg(ot.tag_id) AS tag_ids
                 FROM objectives_tags ot
-                JOIN tags t ON t.id = ot.tag_id
-                WHERE t.ts_name @@ to_tsquery('{}')
+                GROUP BY ot.objective_id
+            ) containing_tags
+            ON objectives.id = containing_tags.objective_id
+            LEFT OUTER JOIN (
+                SELECT ot.objective_id
+                FROM objectives_tags ot
+                JOIN tags t
+                ON ot.tag_id = t.id
+                WHERE t.name @@ to_tsquery('{}')
                 GROUP BY ot.objective_id
             ) matching_tags
-            ON (objectives.ts_description @@ to_tsquery('{}') OR matching_tags.objective_id = objectives.id)",
+            ON objectives.id = matching_tags.objective_id
+            WHERE (objectives.ts_description @@ to_tsquery('{}') OR objectives.id = matching_tags.objective_id)
+            {}",
             search_terms.join(" | "),
-            search_terms.join(" | "))
+            search_terms.join(" | "),
+            goal_area_ids_clause)
 }
 
 fn search(data: web::Data<AppState>) -> HttpResponse {
