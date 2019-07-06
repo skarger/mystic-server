@@ -23,11 +23,13 @@ pub struct Objective {
 }
 
 #[derive(QueryableByName, PartialEq, Debug)]
-pub struct TaggedObjective {
+pub struct CategorizedObjective {
     #[sql_type="Integer"]
     pub id: i32,
     #[sql_type="Text"]
     pub description: String,
+    #[sql_type="Array<Integer>"]
+    pub goal_area_ids: Vec<i32>,
     #[sql_type="Array<Integer>"]
     pub tag_ids: Vec<i32>,
 

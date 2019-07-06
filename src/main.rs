@@ -36,7 +36,8 @@ struct NewGoalAreaPayload {
 struct ObjectiveResult {
     id: i32,
     description: String,
-    tag_ids: Vec<i32>
+    goal_area_ids: Vec<i32>,
+    tag_ids: Vec<i32>,
 }
 
 #[derive(Deserialize)]
@@ -101,12 +102,17 @@ fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
     let connection = establish_connection();
 
     let objective_results = sql_query(text_search_sql(&query.q))
-        .load::<TaggedObjective>(&connection)
+        .load::<CategorizedObjective>(&connection)
         .expect("Error loading objectives");
 
     let mut objectives = Vec::new();
     for objective in objective_results {
-        objectives.push(ObjectiveResult { id: objective.id, description: objective.description, tag_ids: objective.tag_ids });
+        objectives.push(ObjectiveResult {
+            id: objective.id,
+            description: objective.description,
+            goal_area_ids: objective.goal_area_ids,
+            tag_ids: objective.tag_ids
+        });
     }
 
     let result = json!({
@@ -127,11 +133,22 @@ fn text_search_sql(search_phrase: &String) -> String {
         search_terms.push(format!("{}:*", term));
     }
 
-    format!("SELECT objectives.id, objectives.description, CASE
+    format!("SELECT objectives.id, objectives.description,
+                CASE
+                    WHEN containing_goal_areas.goal_area_ids is NULL THEN '{{}}'
+                    ELSE containing_goal_areas.goal_area_ids
+                END AS goal_area_ids,
+                CASE
                     WHEN matching_tags.tag_ids is NULL THEN '{{}}'
                     ELSE matching_tags.tag_ids
-                    END AS tag_ids
+                END AS tag_ids
             FROM objectives
+            LEFT OUTER JOIN (
+                SELECT oga.objective_id, array_agg(oga.goal_area_id) AS goal_area_ids
+                FROM objectives_goal_areas oga
+                GROUP BY oga.objective_id
+            ) containing_goal_areas
+            ON objectives.id = containing_goal_areas.objective_id
             LEFT OUTER JOIN (
                 SELECT ot.objective_id, array_agg(t.id) AS tag_ids
                 FROM objectives_tags ot
