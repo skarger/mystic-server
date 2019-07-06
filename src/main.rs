@@ -43,7 +43,7 @@ struct ObjectiveResult {
 
 #[derive(Deserialize)]
 struct SearchQuery {
-    q: String,
+    q: Option<String>,
     goal_area_ids: Option<String>,
 }
 
@@ -111,8 +111,7 @@ fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
         None => default_goal_area_ids,
     };
 
-    println!("{}", text_search_sql(&query.q, &requested_goal_area_ids));
-    let objective_results = sql_query(text_search_sql(&query.q, &requested_goal_area_ids))
+    let objective_results = sql_query(objective_search_sql(&query.q, &requested_goal_area_ids))
         .load::<CategorizedObjective>(&connection)
         .expect("Error loading objectives");
 
@@ -135,22 +134,25 @@ fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
     result.to_string()
 }
 
-fn text_search_sql(search_phrase: &String, goal_area_ids: &Vec<i32>) -> String {
-    let mut search_terms = Vec::new();
+fn objective_search_sql(search_query: &Option<String>, goal_area_ids: &Vec<i32>) -> String {
+    let tag_search_clause = text_search_clause(&String::from("WHERE t.name @@ to_tsquery('{{ts_query_terms}}')"),
+                                               search_query);
+    let description_search_clause = text_search_clause(&String::from("objectives.ts_description @@ to_tsquery('{{ts_query_terms}}')"),
+                                                       search_query);
 
-    // TODO: implement first class query builder support for postgres full text search
-    // for now we do primitive string escaping
-    for term in str::split_whitespace(&str::replace(search_phrase, "'", "''")) {
-        search_terms.push(format!("{}:*", term));
-    }
+    let search_query_clause = if description_search_clause.len() > 0 && tag_search_clause.len() > 0 {
+        format!("({} OR objectives.id = matching_tags.objective_id)", description_search_clause)
+    } else {
+        String::from("1=1")
+    };
 
     let goal_area_ids_clause = if goal_area_ids.len() > 0 {
-        format!("AND goal_area_ids && ARRAY[{}]", goal_area_ids.iter()
+        format!("goal_area_ids && ARRAY[{}]", goal_area_ids.iter()
             .map(|i| i.to_string())
             .collect::<Vec<String>>()
             .join(","))
     } else {
-        String::from("")
+        String::from("1=1")
     };
 
     format!("SELECT objectives.id, objectives.description,
@@ -180,15 +182,34 @@ fn text_search_sql(search_phrase: &String, goal_area_ids: &Vec<i32>) -> String {
                 FROM objectives_tags ot
                 JOIN tags t
                 ON ot.tag_id = t.id
-                WHERE t.name @@ to_tsquery('{}')
+                {}
                 GROUP BY ot.objective_id
             ) matching_tags
             ON objectives.id = matching_tags.objective_id
-            WHERE (objectives.ts_description @@ to_tsquery('{}') OR objectives.id = matching_tags.objective_id)
-            {}",
-            search_terms.join(" | "),
-            search_terms.join(" | "),
-            goal_area_ids_clause)
+            WHERE {}
+            AND {}",
+            tag_search_clause,
+            goal_area_ids_clause,
+            search_query_clause
+            )
+}
+
+fn text_search_clause(condition_text: &String, search_query: &Option<String>) -> String {
+    let reg = Handlebars::new();
+
+    match &search_query {
+        Some(search_phrase) => {
+            let mut search_terms = Vec::new();
+            // TODO: implement first class query builder support for postgres full text search
+            // for now we do primitive string escaping
+            for term in str::split_whitespace(&str::replace(search_phrase, "'", "''")) {
+                search_terms.push(format!("{}:*", term));
+            }
+            let context = &json!({ "ts_query_terms": search_terms.join(" | ") });
+            reg.render_template(condition_text, context).unwrap()
+        },
+        None => String::from(""),
+    }
 }
 
 fn search(data: web::Data<AppState>) -> HttpResponse {
