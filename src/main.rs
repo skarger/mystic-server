@@ -103,15 +103,8 @@ fn api_create_goal_area(payload: web::Json<DataPayload>) -> impl Responder {
 fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
     let connection = establish_connection();
 
-    // if the request passed a goal_area_ids parameter, we coerce it into integers to ensure
-    // that it consists only of values with the same data type as the goal_areas IDs in the DB
-    let default_goal_area_ids: Vec<i32> = Vec::new();
-    let requested_goal_area_ids = match &query.goal_area_ids {
-        Some(v) => v.split(",").map(|id| i32::from_str(id)).filter_map(Result::ok).collect(),
-        None => default_goal_area_ids,
-    };
-
-    let objective_results = sql_query(objective_search_sql(&query.q, &requested_goal_area_ids))
+    let objective_results = sql_query(
+        objective_search_sql(&query.q, &query.goal_area_ids))
         .load::<CategorizedObjective>(&connection)
         .expect("Error loading objectives");
 
@@ -134,11 +127,18 @@ fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
     result.to_string()
 }
 
-fn objective_search_sql(search_query: &Option<String>, goal_area_ids: &Vec<i32>) -> String {
+// We find objectives as follows:
+// If a search query parameter (q) is given, then we want any objectives that either have
+// a description matching that query text, or have tags matching that query text.
+// If no search query is given, then it provides no constraint.
+// If a goal_area_ids parameter is given, then we want to constrain the loaded objectives
+// to ones within those goal areas. If no goal_area_ids is given, then it provides no constraint.
+// Both q and goal_area_ids can be given but empty, and we will load no objectives in that case.
+fn objective_search_sql(q: &Option<String>, goal_area_ids: &Option<String>) -> String {
     let tag_search_clause = text_search_clause(&String::from("WHERE t.name @@ to_tsquery('{{ts_query_terms}}')"),
-                                               search_query);
+                                               q);
     let description_search_clause = text_search_clause(&String::from("objectives.ts_description @@ to_tsquery('{{ts_query_terms}}')"),
-                                                       search_query);
+                                                       q);
 
     let search_query_clause = if description_search_clause.len() > 0 && tag_search_clause.len() > 0 {
         format!("({} OR objectives.id = matching_tags.objective_id)", description_search_clause)
@@ -146,14 +146,7 @@ fn objective_search_sql(search_query: &Option<String>, goal_area_ids: &Vec<i32>)
         String::from("1=1")
     };
 
-    let goal_area_ids_clause = if goal_area_ids.len() > 0 {
-        format!("goal_area_ids && ARRAY[{}]", goal_area_ids.iter()
-            .map(|i| i.to_string())
-            .collect::<Vec<String>>()
-            .join(","))
-    } else {
-        String::from("1=1")
-    };
+    let goal_area_ids_clause = goal_area_ids_clause(&goal_area_ids);
 
     format!("SELECT objectives.id, objectives.description,
                 CASE
@@ -209,6 +202,26 @@ fn text_search_clause(condition_text: &String, search_query: &Option<String>) ->
             reg.render_template(condition_text, context).unwrap()
         },
         None => String::from(""),
+    }
+}
+
+fn goal_area_ids_clause(goal_area_ids: &Option<String>) -> String {
+    match goal_area_ids {
+        Some(v) => {
+            // we coerce the given goal_area_ids parameter it into integers to ensure
+            // that it consists only of values with the same data type as the goal_areas IDs in the DB
+            let requested_goal_area_ids : Vec<i32> = v.split(",")
+                .map(|id| i32::from_str(id))
+                .filter_map(Result::ok)
+                .collect();
+
+            let joined_goal_area_ids = requested_goal_area_ids.iter()
+                .map(|i| i.to_string())
+                .collect::<Vec<String>>()
+                .join(",");
+            format!("goal_area_ids && ARRAY[{}]::integer[]", joined_goal_area_ids)
+        },
+        None => String::from("1=1"),
     }
 }
 
