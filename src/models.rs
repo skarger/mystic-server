@@ -1,6 +1,7 @@
+use diesel::sql_types::*;
+use serde::Serialize;
 use super::schema::goal_areas;
 use super::schema::objectives;
-use diesel::sql_types::*;
 
 
 #[derive(Queryable)]
@@ -22,7 +23,7 @@ pub struct Objective {
     pub description: String,
 }
 
-#[derive(QueryableByName, PartialEq, Debug)]
+#[derive(QueryableByName, PartialEq, Debug, Serialize)]
 pub struct CategorizedObjective {
     #[sql_type="Integer"]
     pub id: i32,

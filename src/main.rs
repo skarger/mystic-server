@@ -13,7 +13,7 @@ use env_logger;
 use handlebars::Handlebars;
 use listenfd::ListenFd;
 use self::models::*;
-use serde::{Serialize, Deserialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::env;
@@ -31,14 +31,6 @@ struct DataPayload {
 #[derive(Deserialize)]
 struct NewGoalAreaPayload {
     description: String,
-}
-
-#[derive(Serialize)]
-struct ObjectiveResult {
-    id: i32,
-    description: String,
-    goal_area_ids: Vec<i32>,
-    tag_ids: Vec<i32>,
 }
 
 #[derive(Deserialize)]
@@ -108,19 +100,9 @@ fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
         .load::<CategorizedObjective>(&connection)
         .expect("Error loading objectives");
 
-    let mut objectives = Vec::new();
-    for objective in objective_results {
-        objectives.push(ObjectiveResult {
-            id: objective.id,
-            description: objective.description,
-            goal_area_ids: objective.goal_area_ids,
-            tag_ids: objective.tag_ids
-        });
-    }
-
     let result = json!({
       "data": {
-        "objectives": &objectives
+        "objectives": &objective_results
       }
     });
 
