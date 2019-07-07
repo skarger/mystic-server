@@ -1,5 +1,3 @@
-`systemfd --no-pid -s http::8080 -- cargo watch -x run`
-
 # Code Organization
 
 We use [Cargo workspaces](https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html) to separate logical components of the code.
@@ -13,3 +11,11 @@ As the application grows we may want one or more other workspaces, for example o
 
 For local development we use [dotenv](https://crates.io/crates/dotenv).
 This loads values from the `.env` file. We do not store actual secrets in this file, only safe-to-expose development environment values.
+
+## Running the web server
+
+To run with automatic rebuilding on code changes, use this command:
+
+`systemfd --no-pid -s http::8080 -- cargo watch -x run`
+
+The standard `cargo run` works too.
