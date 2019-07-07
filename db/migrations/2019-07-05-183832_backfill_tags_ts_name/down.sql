@@ -1,0 +1,4 @@
+ALTER TABLE tags ALTER COLUMN ts_config_name DROP NOT NULL;
+ALTER TABLE tags ALTER COLUMN ts_name DROP NOT NULL;
+
+UPDATE tags SET ts_name = NULL;

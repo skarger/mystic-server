@@ -2,12 +2,21 @@ use actix_web::{web, App, Responder, HttpServer, HttpResponse};
 use actix_web::http::header;
 use actix_web::middleware::cors;
 use actix_web::middleware::Logger;
-use handlebars::Handlebars;
+use db::{establish_connection, load_goal_areas, load_tags, search_for_objectives};
+use dotenv::dotenv;
 use env_logger;
+use handlebars::Handlebars;
 use listenfd::ListenFd;
+use serde::Deserialize;
 use serde_json::json;
 use std::env;
 use std::error::Error;
+
+#[derive(Deserialize)]
+struct SearchQuery {
+    q: Option<String>,
+    goal_area_ids: Option<String>,
+}
 
 struct AppState {
     pub template_registry: Handlebars,
@@ -28,38 +37,47 @@ fn index(data: web::Data<AppState>) -> impl Responder {
         .body(data.template_registry.render("home", &json!({})).unwrap())
 }
 
-fn api_search() -> impl Responder {
+fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
+    let connection = establish_connection();
+    let objectives = search_for_objectives(&connection, &query.q, &query.goal_area_ids);
+
     let result = json!({
-      "data": [
-        { "description": "An objective" }
-      ]
+      "data": {
+        "objectives": &objectives
+      }
     });
 
     result.to_string()
 }
 
 fn search(data: web::Data<AppState>) -> HttpResponse {
+    let connection = establish_connection();
+    let goal_areas = load_goal_areas(&connection);
+    let tags = load_tags(&connection);
+
     let json = json!({
         "data": {
-            "clientName": "Student",
-            "objectives": [
-                { "description": "An objective" }
-            ]
+          "clientName": "Client",
+          "goalAreas": &goal_areas,
+          "tags": &tags
         }
     });
 
-    let env = json!({
-      "scriptURL": "https://objective-bank.s3.amazonaws.com/app-bbf7cb9a309d9faa940a1cfbfb7de87e.js",
-      "cssURL": "https://objective-bank.s3.amazonaws.com/app-6314a9ef95b155b4de563d349944e6f3.css",
+    let context = json!({
+      "appEnvironment": format!("{}", env::var("APP_ENVIRONMENT").unwrap()),
+      "baseURL": format!("{}", env::var("BASE_URL").unwrap()),
+      "scriptURL": format!("{}/app-{}.js", env::var("CLIENT_BASE_URL").unwrap(), env::var("CLIENT_JS_ID").unwrap()),
+      "cssURL": format!("{}/app-{}.css", env::var("CLIENT_BASE_URL").unwrap(), env::var("CLIENT_CSS_ID").unwrap()),
       "data": json.to_string()
     });
 
     HttpResponse::Ok()
         .content_type("text/html")
-        .body(data.template_registry.render("objectives", &env).unwrap())
+        .body(data.template_registry.render("objectives", &context).unwrap())
 }
 
 fn main() -> std::io::Result<()> {
+    dotenv().ok();
     std::env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
 
