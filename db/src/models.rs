@@ -1,7 +1,5 @@
 use diesel::sql_types::*;
 use serde::Serialize;
-use super::schema::goal_areas;
-use super::schema::objectives;
 
 
 #[derive(Queryable, Serialize)]
@@ -16,8 +14,7 @@ pub struct Tag {
     pub name: String,
 }
 
-#[derive(QueryableByName, PartialEq, Debug)]
-#[table_name = "objectives"]
+#[derive(Queryable)]
 pub struct Objective {
     pub id: i32,
     pub description: String,
@@ -34,10 +31,4 @@ pub struct CategorizedObjective {
     #[sql_type="Array<Integer>"]
     pub tag_ids: Vec<i32>,
 
-}
-
-#[derive(Insertable)]
-#[table_name="goal_areas"]
-pub struct NewGoalArea<'a> {
-    pub description: &'a str,
 }
