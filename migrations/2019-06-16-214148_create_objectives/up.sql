@@ -5,8 +5,8 @@ CREATE TABLE objectives (
     ts_description TSVECTOR NOT NULL
 );
 
-CREATE INDEX ts_config_name_idx ON objectives USING BTREE (ts_config_name);
-CREATE INDEX ts_description_idx ON objectives USING GIN (ts_description);
+CREATE INDEX objectives_ts_config_name_idx ON objectives USING BTREE (ts_config_name);
+CREATE INDEX objectives_ts_description_idx ON objectives USING GIN (ts_description);
 
 CREATE TRIGGER objectives_ts_description_update
 BEFORE INSERT OR UPDATE ON objectives
