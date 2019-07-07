@@ -4,13 +4,13 @@ use super::schema::goal_areas;
 use super::schema::objectives;
 
 
-#[derive(Queryable)]
+#[derive(Queryable, Serialize)]
 pub struct GoalArea {
     pub id: i32,
     pub description: String,
 }
 
-#[derive(Queryable)]
+#[derive(Queryable, Serialize)]
 pub struct Tag {
     pub id: i32,
     pub name: String,
