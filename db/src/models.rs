@@ -14,12 +14,6 @@ pub struct Tag {
     pub name: String,
 }
 
-#[derive(Queryable)]
-pub struct Objective {
-    pub id: i32,
-    pub description: String,
-}
-
 #[derive(QueryableByName, PartialEq, Debug, Serialize)]
 pub struct CategorizedObjective {
     #[sql_type="Integer"]
