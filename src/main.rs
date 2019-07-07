@@ -24,16 +24,6 @@ mod schema;
 mod models;
 
 #[derive(Deserialize)]
-struct DataPayload {
-    data: NewGoalAreaPayload,
-}
-
-#[derive(Deserialize)]
-struct NewGoalAreaPayload {
-    description: String,
-}
-
-#[derive(Deserialize)]
 struct SearchQuery {
     q: Option<String>,
     goal_area_ids: Option<String>,
@@ -78,18 +68,6 @@ fn index(data: web::Data<AppState>) -> impl Responder {
     HttpResponse::Ok()
         .content_type("text/html")
         .body(data.template_registry.render("home", &json!({})).unwrap())
-}
-
-fn api_create_goal_area(payload: web::Json<DataPayload>) -> impl Responder {
-    let connection = establish_connection();
-
-    let goal_area = create_goal_area(&connection, &payload.data.description);
-
-    let result = json!({
-      "data": { "id": format!("{}", goal_area.id), "description": "An objective" }
-    });
-
-    result.to_string()
 }
 
 fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
@@ -279,7 +257,6 @@ fn main() -> std::io::Result<()> {
         .service(web::resource("/").to(index))
         .service(web::resource("/api/search").to(api_search))
         .service(web::resource("/search").to(search))
-        .service(web::resource("/api/goal_areas").route(web::post().to(api_create_goal_area)))
     );
 
     server = if let Some(l) = listenfd.take_tcp_listener(0).unwrap() {
