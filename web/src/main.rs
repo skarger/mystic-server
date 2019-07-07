@@ -2,10 +2,7 @@ use actix_web::{web, App, Responder, HttpServer, HttpResponse};
 use actix_web::http::header;
 use actix_web::middleware::cors;
 use actix_web::middleware::Logger;
-use db::models::*;
-use db::{establish_connection, objective_search_sql};
-use diesel::prelude::*;
-use diesel::sql_query;
+use db::{establish_connection, load_goal_areas, load_tags, search_for_objectives};
 use dotenv::dotenv;
 use env_logger;
 use handlebars::Handlebars;
@@ -42,15 +39,11 @@ fn index(data: web::Data<AppState>) -> impl Responder {
 
 fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
     let connection = establish_connection();
-
-    let objective_results = sql_query(
-        objective_search_sql(&query.q, &query.goal_area_ids))
-        .load::<CategorizedObjective>(&connection)
-        .expect("Error loading objectives");
+    let objectives = search_for_objectives(&connection, &query.q, &query.goal_area_ids);
 
     let result = json!({
       "data": {
-        "objectives": &objective_results
+        "objectives": &objectives
       }
     });
 
@@ -58,15 +51,9 @@ fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
 }
 
 fn search(data: web::Data<AppState>) -> HttpResponse {
-    use db::schema::{goal_areas, tags};
-
     let connection = establish_connection();
-    let goal_areas = goal_areas::table
-        .load::<GoalArea>(&connection)
-        .expect("Error loading goal_areas");
-    let tags = tags::table
-        .load::<Tag>(&connection)
-        .expect("Error loading tags");
+    let goal_areas = load_goal_areas(&connection);
+    let tags = load_tags(&connection);
 
     let json = json!({
         "data": {

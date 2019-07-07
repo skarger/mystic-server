@@ -3,8 +3,11 @@ extern crate diesel;
 
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
+use diesel::sql_query;
 use dotenv::dotenv;
 use handlebars::Handlebars;
+use self::models::*;
+use self::schema::*;
 use serde_json::json;
 use std::env;
 use std::str::FromStr;
@@ -21,14 +24,32 @@ pub fn establish_connection() -> PgConnection {
         .expect(&format!("Error connecting to {}", database_url))
 }
 
+pub fn load_goal_areas(connection: &PgConnection) -> Vec<GoalArea> {
+    goal_areas::table
+        .load::<GoalArea>(connection)
+        .expect("Error loading goal_areas")
+}
+
+pub fn load_tags(connection: &PgConnection) -> Vec<Tag> {
+    tags::table
+        .load::<Tag>(connection)
+        .expect("Error loading tags")
+}
+
+pub fn search_for_objectives(connection: &PgConnection, q: &Option<String>, goal_area_ids: &Option<String>) -> Vec<CategorizedObjective> {
+    sql_query(objective_search_sql(q, goal_area_ids))
+        .load::<CategorizedObjective>(connection)
+        .expect("Error loading objectives")
+}
+
 // We find objectives as follows:
-// If a search query parameter (q) is given, then we want any objectives that either have
-// a description matching that query text, or have tags matching that query text.
-// If no search query is given, then it provides no constraint.
-// If a goal_area_ids parameter is given, then we want to constrain the loaded objectives
-// to ones within those goal areas. If no goal_area_ids is given, then it provides no constraint.
-// Both q and goal_area_ids can be given but empty, and we will load no objectives in that case.
-pub fn objective_search_sql(q: &Option<String>, goal_area_ids: &Option<String>) -> String {
+// If a search query parameter (q) is Some value, then we constrain the loaded objectives to ones that
+// either have a description matching that query text, or have tags matching that query text.
+// If a goal_area_ids parameter is Some value, then we constrain the loaded objectives
+// to ones within those goal areas.
+// Both q and goal_area_ids can be Some value but empty, and we will load no objectives in that case.
+// When a parameter is None, that parameter will not constrain the loaded objectives.
+fn objective_search_sql(q: &Option<String>, goal_area_ids: &Option<String>) -> String {
     let tag_search_clause = text_search_clause(&String::from("WHERE t.name @@ to_tsquery('{{ts_query_terms}}')"),
                                                q);
     let description_search_clause = text_search_clause(&String::from("objectives.ts_description @@ to_tsquery('{{ts_query_terms}}')"),
