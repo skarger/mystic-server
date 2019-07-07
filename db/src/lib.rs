@@ -36,19 +36,23 @@ pub fn load_tags(connection: &PgConnection) -> Vec<Tag> {
         .expect("Error loading tags")
 }
 
+/// We find objectives as follows:
+///
+/// If a search query parameter (q) is Some value, then we constrain the loaded objectives to ones that
+/// either have a description matching that query text, or have tags matching that query text.
+///
+/// If a goal_area_ids parameter is Some value, then we constrain the loaded objectives
+/// to ones within those goal areas.
+///
+/// Both q and goal_area_ids can be Some value but empty, and we will load no objectives in that case.
+///
+/// When a parameter is None, that parameter will not constrain the loaded objectives.
 pub fn search_for_objectives(connection: &PgConnection, q: &Option<String>, goal_area_ids: &Option<String>) -> Vec<CategorizedObjective> {
     sql_query(objective_search_sql(q, goal_area_ids))
         .load::<CategorizedObjective>(connection)
         .expect("Error loading objectives")
 }
 
-// We find objectives as follows:
-// If a search query parameter (q) is Some value, then we constrain the loaded objectives to ones that
-// either have a description matching that query text, or have tags matching that query text.
-// If a goal_area_ids parameter is Some value, then we constrain the loaded objectives
-// to ones within those goal areas.
-// Both q and goal_area_ids can be Some value but empty, and we will load no objectives in that case.
-// When a parameter is None, that parameter will not constrain the loaded objectives.
 fn objective_search_sql(q: &Option<String>, goal_area_ids: &Option<String>) -> String {
     let tag_search_clause = text_search_clause(&String::from("WHERE t.name @@ to_tsquery('{{ts_query_terms}}')"),
                                                q);
