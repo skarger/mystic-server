@@ -78,7 +78,7 @@ fn search(data: web::Data<AppState>) -> HttpResponse {
 
 fn main() -> std::io::Result<()> {
     dotenv().ok();
-    std::env::set_var("RUST_LOG", "actix_web=info");
+    std::env::set_var("RUST_LOG", "actix_web=info,web=info");
     env_logger::init();
 
     let mut listenfd = ListenFd::from_env();

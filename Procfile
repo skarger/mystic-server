@@ -1,2 +1,2 @@
-web: ./target/release/mystic-server
+web: ./target/release/web
 release: cd db && ../target/release/diesel migration run
