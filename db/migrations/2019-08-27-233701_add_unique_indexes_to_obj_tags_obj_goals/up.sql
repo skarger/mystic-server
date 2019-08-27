@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX objective_tags_obj_id_tag_id_idx ON objectives_tags (objective_id, tag_id);
+CREATE UNIQUE INDEX objective_goal_areas_obj_id_ga_id_idx ON objectives_goal_areas (objective_id, goal_area_id);

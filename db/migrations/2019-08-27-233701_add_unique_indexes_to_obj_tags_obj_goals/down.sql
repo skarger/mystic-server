@@ -1,0 +1,2 @@
+DROP INDEX objective_tags_obj_id_tag_id_idx;
+DROP INDEX objective_goal_areas_obj_id_ga_id_idx;
