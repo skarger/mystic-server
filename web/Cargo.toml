@@ -6,7 +6,9 @@ edition = "2018"
 
 [dependencies]
 db = { path = "../db" }
+graphql = { path = "../graphql" }
 actix-web = "1.0"
+actix-cors = "0.1"
 dotenv = "0.14.1"
 env_logger = "0.6"
 handlebars = "2.0"

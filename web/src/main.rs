@@ -1,8 +1,9 @@
+use actix_cors;
 use actix_web::{web, App, Responder, HttpServer, HttpResponse};
 use actix_web::http::header;
-use actix_web::middleware::cors;
 use actix_web::middleware::Logger;
 use db::{establish_connection, load_goal_areas, load_tags, search_for_objectives};
+use graphql::{execute};
 use dotenv::dotenv;
 use env_logger;
 use handlebars::Handlebars;
@@ -76,6 +77,14 @@ fn search(data: web::Data<AppState>) -> HttpResponse {
         .body(data.template_registry.render("objectives", &context).unwrap())
 }
 
+fn graphql(data: web::Data<AppState>) -> HttpResponse {
+    let res = execute();
+
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .body(serde_json::to_string(&res).unwrap())
+}
+
 fn main() -> std::io::Result<()> {
     dotenv().ok();
     std::env::set_var("RUST_LOG", "actix_web=info,web=info");
@@ -94,7 +103,7 @@ fn main() -> std::io::Result<()> {
         .wrap(Logger::default())
         .wrap(Logger::new("%a %{User-Agent}i"))
         .wrap(
-            cors::Cors::new()
+            actix_cors::Cors::new()
                 .allowed_methods(vec!["GET", "POST"])
                 .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
                 .allowed_header(header::CONTENT_TYPE)
@@ -103,6 +112,7 @@ fn main() -> std::io::Result<()> {
         .service(web::resource("/").to(index))
         .service(web::resource("/api/search").to(api_search))
         .service(web::resource("/search").to(search))
+        .service(web::resource("/graphql").to(graphql))
     );
 
     server = if let Some(l) = listenfd.take_tcp_listener(0).unwrap() {
