@@ -3,7 +3,7 @@ use actix_web::{web, App, Responder, HttpServer, HttpResponse};
 use actix_web::http::header;
 use actix_web::middleware::Logger;
 use db::{establish_connection, load_goal_areas, load_tags, search_for_objectives};
-use graphql::{execute, graphiql_html};
+use graphql::{Schema, GraphQLRequest, Context, create_schema, graphiql_html};
 use dotenv::dotenv;
 use env_logger;
 use handlebars::Handlebars;
@@ -12,6 +12,7 @@ use serde::Deserialize;
 use serde_json::json;
 use std::env;
 use std::error::Error;
+use std::sync::Arc;
 
 #[derive(Deserialize)]
 struct SearchQuery {
@@ -21,6 +22,8 @@ struct SearchQuery {
 
 struct AppState {
     pub template_registry: Handlebars,
+    pub graphql_schema: Arc<Schema>,
+    pub graphql_context: Context,
 }
 
 // Registers the Handlebars templates for the application.
@@ -77,8 +80,8 @@ fn search(data: web::Data<AppState>) -> HttpResponse {
         .body(data.template_registry.render("objectives", &context).unwrap())
 }
 
-fn graphql(data: web::Data<AppState>) -> HttpResponse {
-    let res = execute();
+fn graphql(data: web::Data<AppState>, graphql_request: web::Json<GraphQLRequest>,) -> HttpResponse {
+    let res = graphql_request.execute(&data.graphql_schema, &data.graphql_context);
 
     HttpResponse::Ok()
         .body(serde_json::to_string(&res).unwrap())
@@ -105,23 +108,30 @@ fn main() -> std::io::Result<()> {
         .parse()
         .expect("PORT must be a number");
 
-    let mut server = HttpServer::new(|| App::new()
-        .data(AppState { template_registry: register_templates().unwrap() })
-        .wrap(Logger::default())
-        .wrap(Logger::new("%a %{User-Agent}i"))
-        .wrap(
-            actix_cors::Cors::new()
-                .allowed_methods(vec!["GET", "POST"])
-                .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
-                .allowed_header(header::CONTENT_TYPE)
-                .max_age(3600)
-        )
-        .service(web::resource("/").to(index))
-        .service(web::resource("/api/search").to(api_search))
-        .service(web::resource("/search").to(search))
-        .service(web::resource("/graphql").route(web::post().to(graphql)))
-        .service(web::resource("/graphiql").route(web::get().to(graphiql)))
-    );
+    let graphql_schema = std::sync::Arc::new(create_schema());
+
+    let mut server = HttpServer::new(move || {
+        App::new()
+            .data(AppState {
+                template_registry: register_templates().unwrap(),
+                graphql_schema: graphql_schema.clone(),
+                graphql_context: Context {},
+            })
+            .wrap(Logger::default())
+            .wrap(Logger::new("%a %{User-Agent}i"))
+            .wrap(
+                actix_cors::Cors::new()
+                    .allowed_methods(vec!["GET", "POST"])
+                    .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
+                    .allowed_header(header::CONTENT_TYPE)
+                    .max_age(3600)
+            )
+            .service(web::resource("/").to(index))
+            .service(web::resource("/api/search").to(api_search))
+            .service(web::resource("/search").to(search))
+            .service(web::resource("/graphql").route(web::post().to(graphql)))
+            .service(web::resource("/graphiql").route(web::get().to(graphiql)))
+    });
 
     server = if let Some(l) = listenfd.take_tcp_listener(0).unwrap() {
         server.listen(l).unwrap()

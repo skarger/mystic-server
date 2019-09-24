@@ -1,22 +1,21 @@
 extern crate juniper;
 
-use juniper::{FieldResult, Variables, EmptyMutation};
+use juniper::{FieldResult, EmptyMutation};
 use juniper::http::graphiql::graphiql_source;
+pub use juniper::http::GraphQLRequest;
 
-pub fn execute() -> juniper::Value {
-    // Create a context object.
-    let ctx = Context {};
+// A root schema consists of a query and a mutation.
+// Request queries can be executed against a RootNode.
+pub type Schema = juniper::RootNode<'static, Query, EmptyMutation<Context>>;
 
-    // Run the executor.
-    let (res, _errors) = juniper::execute(
-        "query { human(id: \"1\") { id } }",
-        None,
-        &Schema::new(Query {}, EmptyMutation::new()),
-        &Variables::new(),
-        &ctx,
-    ).unwrap();
+pub struct Context {
+    // Use your real database pool here.
+    // pool: DatabasePool,
+}
+pub struct Query {}
 
-    res
+pub fn create_schema() -> Schema {
+    Schema::new(Query {}, EmptyMutation::new())
 }
 
 pub fn graphiql_html(graphql_url: &String) -> String {
@@ -49,20 +48,12 @@ struct NewHuman {
     home_planet: String,
 }
 
-// Now, we create our root Query and Mutation types with resolvers by using the
-// object macro.
-// Objects can have contexts that allow accessing shared state like a database
-// pool.
 
-struct Context {
-    // Use your real database pool here.
-    // pool: DatabasePool,
-}
+
+
 
 // To make our context usable by Juniper, we have to implement a marker trait.
 impl juniper::Context for Context {}
-
-struct Query {}
 
 #[juniper::object(
 // Here we specify the context type for the object.
@@ -92,7 +83,3 @@ impl Query {
     }
 }
 //});
-
-// A root schema consists of a query and a mutation.
-// Request queries can be executed against a RootNode.
-type Schema = juniper::RootNode<'static, Query, EmptyMutation<Context>>;
