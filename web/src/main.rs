@@ -114,7 +114,7 @@ fn main() -> std::io::Result<()> {
         App::new()
             .data(AppState {
                 template_registry: register_templates().unwrap(),
-                graphql_schema: graphql_schema.clone(),
+                graphql_schema: Arc::clone(&graphql_schema),
                 graphql_context: Context {},
             })
             .wrap(Logger::default())
