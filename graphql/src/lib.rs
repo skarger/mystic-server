@@ -1,8 +1,9 @@
 extern crate juniper;
 
 use juniper::{FieldResult, Variables};
+use juniper::http::graphiql::graphiql_source;
 
-pub fn execute() {
+pub fn execute() -> juniper::Value {
     // Create a context object.
     let ctx = Context {};
 
@@ -15,7 +16,11 @@ pub fn execute() {
         &ctx,
     ).unwrap();
 
-    res;
+    res
+}
+
+pub fn graphiql_html(graphql_url: &String) -> String {
+    graphiql_source(graphql_url)
 }
 
 #[derive(juniper::GraphQLEnum)]

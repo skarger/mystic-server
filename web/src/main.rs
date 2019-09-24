@@ -3,7 +3,7 @@ use actix_web::{web, App, Responder, HttpServer, HttpResponse};
 use actix_web::http::header;
 use actix_web::middleware::Logger;
 use db::{establish_connection, load_goal_areas, load_tags, search_for_objectives};
-use graphql::{execute};
+use graphql::{execute, graphiql_html};
 use dotenv::dotenv;
 use env_logger;
 use handlebars::Handlebars;
@@ -81,8 +81,15 @@ fn graphql(data: web::Data<AppState>) -> HttpResponse {
     let res = execute();
 
     HttpResponse::Ok()
-        .content_type("text/html")
         .body(serde_json::to_string(&res).unwrap())
+}
+
+fn graphiql() -> HttpResponse {
+    let graphql_url = format!("{}/graphql", env::var("BASE_URL").unwrap());
+    let html = graphiql_html(&graphql_url);
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(html)
 }
 
 fn main() -> std::io::Result<()> {
@@ -112,7 +119,8 @@ fn main() -> std::io::Result<()> {
         .service(web::resource("/").to(index))
         .service(web::resource("/api/search").to(api_search))
         .service(web::resource("/search").to(search))
-        .service(web::resource("/graphql").to(graphql))
+        .service(web::resource("/graphql").route(web::post().to(graphql)))
+        .service(web::resource("/graphiql").route(web::get().to(graphiql)))
     );
 
     server = if let Some(l) = listenfd.take_tcp_listener(0).unwrap() {
