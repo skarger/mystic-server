@@ -1,6 +1,6 @@
 extern crate juniper;
 
-use juniper::{FieldResult, Variables};
+use juniper::{FieldResult, Variables, EmptyMutation};
 use juniper::http::graphiql::graphiql_source;
 
 pub fn execute() -> juniper::Value {
@@ -11,7 +11,7 @@ pub fn execute() -> juniper::Value {
     let (res, _errors) = juniper::execute(
         "query { human(id: \"1\") { id } }",
         None,
-        &Schema::new(Query {}, Mutation {}),
+        &Schema::new(Query {}, EmptyMutation::new()),
         &Variables::new(),
         &ctx,
     ).unwrap();
@@ -93,14 +93,6 @@ impl Query {
 }
 //});
 
-
-struct Mutation {}
-
-#[juniper::object(
-Context = Context,
-)]
-impl Mutation {}
-
 // A root schema consists of a query and a mutation.
 // Request queries can be executed against a RootNode.
-type Schema = juniper::RootNode<'static, Query, Mutation>;
+type Schema = juniper::RootNode<'static, Query, EmptyMutation<Context>>;
