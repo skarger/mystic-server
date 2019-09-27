@@ -1,7 +1,6 @@
 use diesel::sql_types::*;
 use serde::Serialize;
 
-
 #[derive(Queryable, Serialize)]
 pub struct GoalArea {
     pub id: i32,

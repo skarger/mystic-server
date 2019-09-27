@@ -1,17 +1,16 @@
-extern crate juniper;
+pub use juniper;
 
 use juniper::{FieldResult, EmptyMutation};
 use juniper::http::graphiql::graphiql_source;
 pub use juniper::http::GraphQLRequest;
 
+use db::{establish_connection, load_goal_areas};
+
 // A root schema consists of a query and a mutation.
 // Request queries can be executed against a RootNode.
 pub type Schema = juniper::RootNode<'static, Query, EmptyMutation<Context>>;
 
-pub struct Context {
-    // Use your real database pool here.
-    // pool: DatabasePool,
-}
+pub struct Context {}
 pub struct Query {}
 
 pub fn create_schema() -> Schema {
@@ -20,6 +19,12 @@ pub fn create_schema() -> Schema {
 
 pub fn graphiql_html(graphql_url: &String) -> String {
     graphiql_source(graphql_url)
+}
+
+#[derive(juniper::GraphQLObject)]
+struct GoalAreaType {
+    pub id: i32,
+    pub description: String,
 }
 
 #[derive(juniper::GraphQLEnum)]
@@ -81,5 +86,14 @@ impl Query {
         // Return the result.
         Ok(human)
     }
+
+    fn goal_areas(context: &Context) -> FieldResult<Vec<GoalAreaType>> {
+        let connection = establish_connection();
+        let goal_areas = load_goal_areas(&connection);
+        let result = goal_areas
+            .into_iter()
+            .map(|ga| GoalAreaType { id: ga.id, description: ga.description })
+            .collect();
+        Ok(result)
+    }
 }
-//});
