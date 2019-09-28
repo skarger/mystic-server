@@ -2,6 +2,7 @@
 extern crate diesel;
 
 use diesel::pg::PgConnection;
+use diesel::r2d2;
 use diesel::prelude::*;
 use diesel::sql_query;
 use dotenv::dotenv;
@@ -14,6 +15,20 @@ use std::str::FromStr;
 
 pub mod schema;
 pub mod models;
+
+pub type ConnectionPool = r2d2::Pool<r2d2::ConnectionManager<PgConnection>>;
+
+pub fn connection_pool() -> ConnectionPool {
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+    let manager = r2d2::ConnectionManager::new(database_url);
+    let pool = r2d2::Pool::builder()
+        .max_size(15)
+        .build(manager)
+        .unwrap();
+
+    pool
+}
 
 pub fn establish_connection() -> PgConnection {
     dotenv().ok();

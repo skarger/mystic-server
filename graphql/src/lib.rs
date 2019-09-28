@@ -4,13 +4,15 @@ use juniper::{FieldResult, EmptyMutation};
 use juniper::http::graphiql::graphiql_source;
 pub use juniper::http::GraphQLRequest;
 
-use db::{establish_connection, load_goal_areas};
+use db::{ConnectionPool, load_goal_areas};
 
 // A root schema consists of a query and a mutation.
 // Request queries can be executed against a RootNode.
 pub type Schema = juniper::RootNode<'static, Query, EmptyMutation<Context>>;
 
-pub struct Context {}
+pub struct Context {
+    pub connection_pool: ConnectionPool
+}
 pub struct Query {}
 
 pub fn create_schema() -> Schema {
@@ -88,7 +90,7 @@ impl Query {
     }
 
     fn goal_areas(context: &Context) -> FieldResult<Vec<GoalAreaType>> {
-        let connection = establish_connection();
+        let connection = context.connection_pool.get().unwrap();
         let goal_areas = load_goal_areas(&connection);
         let result = goal_areas
             .into_iter()

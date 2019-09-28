@@ -2,7 +2,7 @@ use actix_cors;
 use actix_web::{web, App, Responder, HttpServer, HttpResponse};
 use actix_web::http::header;
 use actix_web::middleware::Logger;
-use db::{establish_connection, load_goal_areas, load_tags, search_for_objectives};
+use db::{connection_pool, establish_connection, load_goal_areas, load_tags, search_for_objectives};
 use graphql::{Schema, GraphQLRequest, Context, create_schema, graphiql_html};
 use dotenv::dotenv;
 use env_logger;
@@ -115,7 +115,7 @@ fn main() -> std::io::Result<()> {
             .data(AppState {
                 template_registry: register_templates().unwrap(),
                 graphql_schema: Arc::clone(&graphql_schema),
-                graphql_context: Context {},
+                graphql_context: Context { connection_pool: connection_pool() },
             })
             .wrap(Logger::default())
             .wrap(Logger::new("%a %{User-Agent}i"))
