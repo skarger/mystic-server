@@ -4,7 +4,7 @@ use juniper::{FieldResult, EmptyMutation};
 use juniper::http::graphiql::graphiql_source;
 pub use juniper::http::GraphQLRequest;
 
-use db::{ConnectionPool, load_goal_areas};
+use db::{ConnectionPool, load_goal_areas, load_tags};
 
 // A root schema consists of a query and a mutation.
 // Request queries can be executed against a RootNode.
@@ -27,6 +27,12 @@ pub fn graphiql_html(graphql_url: &String) -> String {
 struct GoalAreaType {
     pub id: i32,
     pub description: String,
+}
+
+#[derive(juniper::GraphQLObject)]
+struct TagType {
+    pub id: i32,
+    pub name: String,
 }
 
 #[derive(juniper::GraphQLEnum)]
@@ -95,6 +101,16 @@ impl Query {
         let result = goal_areas
             .into_iter()
             .map(|ga| GoalAreaType { id: ga.id, description: ga.description })
+            .collect();
+        Ok(result)
+    }
+
+    fn tags(context: &Context) -> FieldResult<Vec<TagType>> {
+        let connection = context.connection_pool.get().unwrap();
+        let tags = load_tags(&connection);
+        let result = tags
+            .into_iter()
+            .map(|tag| TagType { id: tag.id, name: tag.name })
             .collect();
         Ok(result)
     }
