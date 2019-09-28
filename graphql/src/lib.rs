@@ -13,60 +13,11 @@ pub type Schema = juniper::RootNode<'static, Query, EmptyMutation<Context>>;
 pub struct Context {
     pub connection_pool: ConnectionPool
 }
-pub struct Query {}
-
-pub fn create_schema() -> Schema {
-    Schema::new(Query {}, EmptyMutation::new())
-}
-
-pub fn graphiql_html(graphql_url: &String) -> String {
-    graphiql_source(graphql_url)
-}
-
-#[derive(juniper::GraphQLObject)]
-struct GoalAreaType {
-    pub id: i32,
-    pub description: String,
-}
-
-#[derive(juniper::GraphQLObject)]
-struct TagType {
-    pub id: i32,
-    pub name: String,
-}
-
-#[derive(juniper::GraphQLEnum)]
-enum Episode {
-    NewHope,
-    Empire,
-    Jedi,
-}
-
-#[derive(juniper::GraphQLObject)]
-#[graphql(description="A humanoid creature in the Star Wars universe")]
-struct Human {
-    id: String,
-    name: String,
-    appears_in: Vec<Episode>,
-    home_planet: String,
-}
-
-// There is also a custom derive for mapping GraphQL input objects.
-
-#[derive(juniper::GraphQLInputObject)]
-#[graphql(description="A humanoid creature in the Star Wars universe")]
-struct NewHuman {
-    name: String,
-    appears_in: Vec<Episode>,
-    home_planet: String,
-}
-
-
-
-
 
 // To make our context usable by Juniper, we have to implement a marker trait.
 impl juniper::Context for Context {}
+
+pub struct Query {}
 
 #[juniper::object(
 // Here we specify the context type for the object.
@@ -77,22 +28,6 @@ Context = Context,
 impl Query {
     fn apiVersion() -> &str {
         "1.0"
-    }
-
-    fn human(context: &Context, id: String) -> FieldResult<Human> {
-        // Get a db connection.
-        //let connection = context.pool.get_connection()?;
-        // Execute a db query.
-        // Note the use of `?` to propagate errors.
-        //let human = connection.find_human(&id)?;
-        let human = Human {
-            id,
-            name: "name".to_string(),
-            appears_in: vec![Episode::NewHope],
-            home_planet: "p".to_string()
-        };
-        // Return the result.
-        Ok(human)
     }
 
     fn goal_areas(context: &Context) -> FieldResult<Vec<GoalAreaType>> {
@@ -114,4 +49,23 @@ impl Query {
             .collect();
         Ok(result)
     }
+}
+
+#[derive(juniper::GraphQLObject)]
+struct GoalAreaType {
+    pub id: i32,
+    pub description: String,
+}
+
+#[derive(juniper::GraphQLObject)]
+struct TagType {
+    pub id: i32,
+    pub name: String,
+}
+
+pub fn create_schema() -> Schema {
+    Schema::new(Query {}, EmptyMutation::new())
+}
+pub fn graphiql_html(graphql_url: &String) -> String {
+    graphiql_source(graphql_url)
 }
