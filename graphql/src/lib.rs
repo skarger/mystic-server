@@ -52,7 +52,7 @@ impl Query {
 
     fn objectives(context: &Context, filter: ObjectiveFilterInput) -> FieldResult<Vec<CategorizedObjectiveType>> {
         let connection = context.connection_pool.get().unwrap();
-        let objectives = search_for_objectives(&connection, &filter.q, &None);
+        let objectives = search_for_objectives(&connection, &filter.q, &filter.goal_area_ids);
         let result = objectives
             .into_iter()
             .map(|obj|
@@ -82,6 +82,7 @@ struct TagType {
 #[derive(juniper::GraphQLInputObject)]
 struct ObjectiveFilterInput {
     pub q: Option<String>,
+    pub goal_area_ids: Option<Vec<i32>>,
 }
 
 #[derive(juniper::GraphQLObject)]

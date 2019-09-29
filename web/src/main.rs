@@ -12,6 +12,7 @@ use serde::Deserialize;
 use serde_json::json;
 use std::env;
 use std::error::Error;
+use std::str::FromStr;
 use std::sync::Arc;
 
 #[derive(Deserialize)]
@@ -43,7 +44,21 @@ fn index(data: web::Data<AppState>) -> impl Responder {
 
 fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
     let connection = establish_connection();
-    let objectives = search_for_objectives(&connection, &query.q, &query.goal_area_ids);
+    let goal_area_ids = match &query.goal_area_ids {
+        None => { None }
+        Some(v) => {
+            // we coerce the given goal_area_ids parameter into integers to ensure
+            // that it consists only of values with the same data type as the goal_areas IDs in the DB
+            let requested_goal_area_ids: Vec<i32> = v.split(",")
+                .map(|id| i32::from_str(id))
+                .filter_map(Result::ok)
+                .collect();
+
+            Some(requested_goal_area_ids)
+        }
+    };
+
+    let objectives = search_for_objectives(&connection, &query.q, &goal_area_ids);
 
     let result = json!({
       "data": {
