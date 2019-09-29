@@ -55,8 +55,14 @@ impl Query {
         let objectives = search_for_objectives(&connection, &filter.q, &None);
         let result = objectives
             .into_iter()
-            .map(|obj| CategorizedObjectiveType { id: obj.id, description: obj.description })
-            .collect();
+            .map(|obj|
+                CategorizedObjectiveType {
+                    id: obj.id,
+                    description: obj.description,
+                    goal_area_ids: obj.goal_area_ids,
+                    tag_ids: obj.tag_ids,
+                }
+            ).collect();
         Ok(result)
     }
 }
@@ -82,6 +88,10 @@ struct ObjectiveFilterInput {
 pub struct CategorizedObjectiveType {
     pub id: i32,
     pub description: String,
+    #[graphql(name="goalAreaIds")]
+    pub goal_area_ids: Vec<i32>,
+    #[graphql(name="tagIds")]
+    pub tag_ids: Vec<i32>,
 }
 
 pub fn create_schema() -> Schema {
