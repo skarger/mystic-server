@@ -1,10 +1,10 @@
-pub use juniper;
+use juniper;
 
 use juniper::{FieldResult, EmptyMutation};
 use juniper::http::graphiql::graphiql_source;
 pub use juniper::http::GraphQLRequest;
 
-use db::{ConnectionPool, load_goal_areas, load_tags};
+use db::{ConnectionPool, load_goal_areas, load_tags, search_for_objectives};
 
 // A root schema consists of a query and a mutation.
 // Request queries can be executed against a RootNode.
@@ -49,6 +49,16 @@ impl Query {
             .collect();
         Ok(result)
     }
+
+    fn objectives(context: &Context, filter: ObjectiveFilterInput) -> FieldResult<Vec<CategorizedObjectiveType>> {
+        let connection = context.connection_pool.get().unwrap();
+        let objectives = search_for_objectives(&connection, &filter.q, &None);
+        let result = objectives
+            .into_iter()
+            .map(|obj| CategorizedObjectiveType { id: obj.id, description: obj.description })
+            .collect();
+        Ok(result)
+    }
 }
 
 #[derive(juniper::GraphQLObject)]
@@ -61,6 +71,17 @@ struct GoalAreaType {
 struct TagType {
     pub id: i32,
     pub name: String,
+}
+
+#[derive(juniper::GraphQLInputObject)]
+struct ObjectiveFilterInput {
+    pub q: Option<String>,
+}
+
+#[derive(juniper::GraphQLObject)]
+pub struct CategorizedObjectiveType {
+    pub id: i32,
+    pub description: String,
 }
 
 pub fn create_schema() -> Schema {
