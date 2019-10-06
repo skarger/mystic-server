@@ -3,4 +3,5 @@
 members = [
     "db",
     "web",
+    "graphql"
 ]

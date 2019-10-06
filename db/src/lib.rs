@@ -2,6 +2,7 @@
 extern crate diesel;
 
 use diesel::pg::PgConnection;
+use diesel::r2d2;
 use diesel::prelude::*;
 use diesel::sql_query;
 use dotenv::dotenv;
@@ -10,10 +11,23 @@ use self::models::*;
 use self::schema::*;
 use serde_json::json;
 use std::env;
-use std::str::FromStr;
 
 pub mod schema;
 pub mod models;
+
+pub type ConnectionPool = r2d2::Pool<r2d2::ConnectionManager<PgConnection>>;
+
+pub fn connection_pool() -> ConnectionPool {
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+    let manager = r2d2::ConnectionManager::new(database_url);
+    let pool = r2d2::Pool::builder()
+        .max_size(15)
+        .build(manager)
+        .unwrap();
+
+    pool
+}
 
 pub fn establish_connection() -> PgConnection {
     dotenv().ok();
@@ -47,13 +61,13 @@ pub fn load_tags(connection: &PgConnection) -> Vec<Tag> {
 /// Both q and goal_area_ids can be Some value but empty, and we will load no objectives in that case.
 ///
 /// When a parameter is None, that parameter will not constrain the loaded objectives.
-pub fn search_for_objectives(connection: &PgConnection, q: &Option<String>, goal_area_ids: &Option<String>) -> Vec<CategorizedObjective> {
+pub fn search_for_objectives(connection: &PgConnection, q: &Option<String>, goal_area_ids: &Option<Vec<i32>>) -> Vec<CategorizedObjective> {
     sql_query(objective_search_sql(q, goal_area_ids))
         .load::<CategorizedObjective>(connection)
         .expect("Error loading objectives")
 }
 
-fn objective_search_sql(q: &Option<String>, goal_area_ids: &Option<String>) -> String {
+fn objective_search_sql(q: &Option<String>, goal_area_ids: &Option<Vec<i32>>) -> String {
     let tag_search_clause = text_search_clause(&String::from("WHERE t.name @@ to_tsquery('{{ts_query_terms}}')"),
                                                q);
     let description_search_clause = text_search_clause(&String::from("objectives.ts_description @@ to_tsquery('{{ts_query_terms}}')"),
@@ -124,17 +138,10 @@ fn text_search_clause(condition_text: &String, search_query: &Option<String>) ->
     }
 }
 
-fn goal_area_ids_clause(goal_area_ids: &Option<String>) -> String {
+fn goal_area_ids_clause(goal_area_ids: &Option<Vec<i32>>) -> String {
     match goal_area_ids {
         Some(v) => {
-            // we coerce the given goal_area_ids parameter it into integers to ensure
-            // that it consists only of values with the same data type as the goal_areas IDs in the DB
-            let requested_goal_area_ids : Vec<i32> = v.split(",")
-                .map(|id| i32::from_str(id))
-                .filter_map(Result::ok)
-                .collect();
-
-            let joined_goal_area_ids = requested_goal_area_ids.iter()
+            let joined_goal_area_ids = v.iter()
                 .map(|i| i.to_string())
                 .collect::<Vec<String>>()
                 .join(",");
