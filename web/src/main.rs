@@ -99,6 +99,7 @@ fn graphql(data: web::Data<AppState>, graphql_request: web::Json<GraphQLRequest>
     let res = graphql_request.execute(&data.graphql_schema, &data.graphql_context);
 
     HttpResponse::Ok()
+        .header(header::CONTENT_TYPE, "application/json")
         .body(serde_json::to_string(&res).unwrap())
 }
 
