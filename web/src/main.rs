@@ -2,7 +2,7 @@ use actix_cors;
 use actix_web::{web, App, Responder, HttpServer, HttpResponse};
 use actix_web::http::header;
 use actix_web::middleware::Logger;
-use db::{connection_pool, establish_connection, load_goal_areas, load_tags, search_for_objectives};
+use db::{connection_pool, establish_connection, search_for_objectives};
 use graphql::{Schema, GraphQLRequest, Context, create_schema, graphiql_html};
 use dotenv::dotenv;
 use env_logger;
@@ -70,29 +70,15 @@ fn api_search(query: web::Query<SearchQuery>) -> impl Responder {
 }
 
 fn search(data: web::Data<AppState>) -> HttpResponse {
-    let connection = establish_connection();
-    let goal_areas = load_goal_areas(&connection);
-    let tags = load_tags(&connection);
-
-    let json = json!({
-        "data": {
-          "clientName": "Client",
-          "goalAreas": &goal_areas,
-          "tags": &tags
-        }
-    });
-
     let context = json!({
       "appEnvironment": format!("{}", env::var("APP_ENVIRONMENT").unwrap()),
       "baseURL": format!("{}", env::var("BASE_URL").unwrap()),
       "scriptURL": format!("{}/app-{}.js", env::var("CLIENT_BASE_URL").unwrap(), env::var("CLIENT_JS_ID").unwrap()),
-      "cssURL": format!("{}/app-{}.css", env::var("CLIENT_BASE_URL").unwrap(), env::var("CLIENT_CSS_ID").unwrap()),
-      "data": json.to_string()
     });
 
     HttpResponse::Ok()
         .content_type("text/html")
-        .body(data.template_registry.render("objectives", &context).unwrap())
+        .body(data.template_registry.render("search", &context).unwrap())
 }
 
 fn graphql(data: web::Data<AppState>, graphql_request: web::Json<GraphQLRequest>,) -> HttpResponse {
