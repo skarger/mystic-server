@@ -73,6 +73,7 @@ fn search(data: web::Data<AppState>) -> HttpResponse {
     let context = json!({
       "appEnvironment": format!("{}", env::var("APP_ENVIRONMENT").unwrap()),
       "baseURL": format!("{}", env::var("BASE_URL").unwrap()),
+      "graphqlURL": format!("{}/graphql", env::var("BASE_URL").unwrap()),
       "scriptURL": format!("{}/app-{}.js", env::var("CLIENT_BASE_URL").unwrap(), env::var("CLIENT_JS_ID").unwrap()),
       "cssURL": format!("{}/app-{}.css", env::var("CLIENT_BASE_URL").unwrap(), env::var("CLIENT_CSS_ID").unwrap()),
     });
