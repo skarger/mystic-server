@@ -22,7 +22,7 @@ pub fn connection_pool() -> ConnectionPool {
         .expect("DATABASE_URL must be set");
     let manager = r2d2::ConnectionManager::new(database_url);
     let pool = r2d2::Pool::builder()
-        .max_size(15)
+        .max_size(3)
         .build(manager)
         .unwrap();
 
