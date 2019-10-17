@@ -14,6 +14,7 @@ use std::env;
 
 pub mod schema;
 pub mod models;
+pub mod types;
 
 pub type ConnectionPool = r2d2::Pool<r2d2::ConnectionManager<PgConnection>>;
 

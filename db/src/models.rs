@@ -1,5 +1,6 @@
 use diesel::sql_types::*;
 use serde::Serialize;
+use super::types::RegConfig;
 
 #[derive(Queryable, Serialize)]
 pub struct GoalArea {
@@ -11,6 +12,7 @@ pub struct GoalArea {
 pub struct Tag {
     pub id: i32,
     pub name: String,
+    pub ts_config_name: RegConfig,
 }
 
 #[derive(QueryableByName, PartialEq, Debug, Serialize)]
