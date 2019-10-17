@@ -1,8 +1,6 @@
-diff --git a/db/src/schema.rs b/db/src/schema.rs
-index 8030c69..f9e455d 100644
---- a/db/src/schema.rs
-+++ b/db/src/schema.rs
-@@ -3,12 +3,15 @@ table! {
+--- src/schema.rs.orig	2019-10-16 22:28:19.000000000 -0400
++++ src/schema.rs	2019-10-16 22:56:28.000000000 -0400
+@@ -3,12 +3,15 @@
          id -> Int4,
          description -> Text,
      }
@@ -18,7 +16,7 @@ index 8030c69..f9e455d 100644
          ts_config_name -> Regconfig,
          ts_description -> Tsvector,
      }
-@@ -28,12 +31,15 @@ table! {
+@@ -28,12 +31,15 @@
          objective_id -> Int4,
          tag_id -> Int4,
      }
