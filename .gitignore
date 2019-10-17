@@ -1,5 +1,5 @@
 /target
 **/*.rs.bk
-
+**/schema.rs.orig
 .idea/*
 *.iml
