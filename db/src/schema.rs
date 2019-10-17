@@ -6,11 +6,14 @@ table! {
 }
 
 table! {
+    use diesel::sql_types::*;
+    use crate::types::*;
+
     objectives (id) {
         id -> Int4,
         description -> Text,
-//        ts_config_name -> Regconfig,
-//        ts_description -> Tsvector,
+        ts_config_name -> Regconfig,
+        ts_description -> Tsvector,
     }
 }
 
@@ -31,11 +34,14 @@ table! {
 }
 
 table! {
+    use diesel::sql_types::*;
+    use crate::types::*;
+
     tags (id) {
         id -> Int4,
         name -> Text,
-//        ts_config_name -> Regconfig,
-//        ts_name -> Tsvector,
+        ts_config_name -> Regconfig,
+        ts_name -> Tsvector,
     }
 }
 
