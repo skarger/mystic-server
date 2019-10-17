@@ -16,7 +16,7 @@ index 8030c69..f9e455d 100644
          id -> Int4,
          description -> Text,
          ts_config_name -> Regconfig,
- //        ts_description -> Tsvector,
+         ts_description -> Tsvector,
      }
 @@ -28,12 +31,15 @@ table! {
          objective_id -> Int4,
@@ -32,5 +32,5 @@ index 8030c69..f9e455d 100644
          id -> Int4,
          name -> Text,
          ts_config_name -> Regconfig,
- //        ts_name -> Tsvector,
+         ts_name -> Tsvector,
      }
