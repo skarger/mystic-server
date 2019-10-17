@@ -1,0 +1,36 @@
+diff --git a/db/src/schema.rs b/db/src/schema.rs
+index 8030c69..f9e455d 100644
+--- a/db/src/schema.rs
++++ b/db/src/schema.rs
+@@ -3,12 +3,15 @@ table! {
+         id -> Int4,
+         description -> Text,
+     }
+ }
+ 
+ table! {
++    use diesel::sql_types::*;
++    use crate::types::*;
++
+     objectives (id) {
+         id -> Int4,
+         description -> Text,
+         ts_config_name -> Regconfig,
+ //        ts_description -> Tsvector,
+     }
+@@ -28,12 +31,15 @@ table! {
+         objective_id -> Int4,
+         tag_id -> Int4,
+     }
+ }
+ 
+ table! {
++    use diesel::sql_types::*;
++    use crate::types::*;
++
+     tags (id) {
+         id -> Int4,
+         name -> Text,
+         ts_config_name -> Regconfig,
+ //        ts_name -> Tsvector,
+     }
