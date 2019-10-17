@@ -13,7 +13,7 @@ table! {
         id -> Int4,
         description -> Text,
         ts_config_name -> Regconfig,
-//        ts_description -> Tsvector,
+        ts_description -> Tsvector,
     }
 }
 
@@ -41,7 +41,7 @@ table! {
         id -> Int4,
         name -> Text,
         ts_config_name -> Regconfig,
-//        ts_name -> Tsvector,
+        ts_name -> Tsvector,
     }
 }
 
