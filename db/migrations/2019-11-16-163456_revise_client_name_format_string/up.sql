@@ -1,1 +1,0 @@
-UPDATE objectives SET description = replace(description, '%1$s', '{client_name}');
