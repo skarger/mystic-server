@@ -1,1 +1,1 @@
--- no-op
+SELECT NULL;
